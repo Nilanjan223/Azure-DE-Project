@@ -1,0 +1,9 @@
+{
+	"name": "azure-project-df-nv",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "929fc825-4839-4cdc-9d29-b2ff454e3b03",
+		"tenantId": "9a54407f-d39f-47e8-a312-67bbec82573e"
+	}
+}
