@@ -5,6 +5,8 @@
 			{
 				"name": "SQL-DB TO AZURE",
 				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "FETCH LAST LOAD",
@@ -83,6 +85,8 @@
 			{
 				"name": "FETCH LAST LOAD",
 				"type": "Lookup",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -109,7 +113,10 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"container": "bronze",
-							"folder": "cdc",
+							"folder": {
+								"value": "@concat(pipeline().parameters.table,'_cdc')",
+								"type": "Expression"
+							},
 							"file": "last_load_details.json"
 						}
 					},
@@ -119,6 +126,8 @@
 			{
 				"name": "CURRENT LOAD",
 				"type": "SetVariable",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"secureOutput": false,
@@ -136,6 +145,8 @@
 			{
 				"name": "LAST LOAD AND PARQUET CONDITION",
 				"type": "IfCondition",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "SQL-DB TO AZURE",
@@ -246,7 +257,10 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"container": "bronze",
-										"folder": "cdc",
+										"folder": {
+											"value": "@concat(pipeline().parameters.table,'_cdc')",
+											"type": "Expression"
+										},
 										"file": "empty.json"
 									}
 								}
@@ -298,16 +312,26 @@
 		],
 		"parameters": {
 			"schema": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "dbo"
 			},
 			"table": {
 				"type": "string"
 			},
 			"last_load_col": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "updated_at"
 			},
 			"from_dt": {
 				"type": "string"
+			},
+			"AllTables": {
+				"type": "array",
+				"defaultValue": [
+					"DimUser",
+					"DimArtist",
+					"DimTrack"
+				]
 			}
 		},
 		"variables": {
