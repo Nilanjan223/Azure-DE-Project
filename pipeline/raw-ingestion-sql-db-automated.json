@@ -320,14 +320,15 @@
 				}
 			},
 			{
-				"name": "FAILED ALERTS",
+				"name": "ALERTS",
 				"type": "WebActivity",
 				"dependsOn": [
 					{
 						"activity": "RUN PIPELINE FOR ALL TABLE",
 						"dependencyConditions": [
 							"Failed",
-							"Skipped"
+							"Skipped",
+							"Succeeded"
 						]
 					}
 				],
