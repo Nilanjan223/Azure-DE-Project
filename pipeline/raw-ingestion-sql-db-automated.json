@@ -81,7 +81,7 @@
 									"parameters": {
 										"container": "bronze",
 										"folder": {
-											"value": "@concat(item().table,'_cdc')",
+											"value": "@item().table",
 											"type": "Expression"
 										},
 										"file": {
@@ -185,7 +185,7 @@
 												"parameters": {
 													"container": "bronze",
 													"folder": {
-														"value": "@concat(item().table,'_cdc')",
+														"value": "@item().table",
 														"type": "Expression"
 													},
 													"file": {
@@ -321,10 +321,6 @@
 			}
 		],
 		"parameters": {
-			"schema": {
-				"type": "string",
-				"defaultValue": "dbo"
-			},
 			"from_dt": {
 				"type": "string"
 			},
