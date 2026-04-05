@@ -1,5 +1,5 @@
 {
-	"name": "raw-ingestion-sql-db",
+	"name": "raw-ingestion-sql-db_temp",
 	"properties": {
 		"activities": [
 			{
