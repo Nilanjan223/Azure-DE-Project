@@ -31,7 +31,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "select * from @{pipeline().parameters.schema}.@{pipeline().parameters.table} where @{pipeline().parameters.last_load_col}>'@{activity('FETCH LAST LOAD').output.value[0].last_load_dt}'",
+							"value": "select * from @{pipeline().parameters.schema}.@{pipeline().parameters.table} where @{pipeline().parameters.last_load_col} >  '@{if(empty(pipeline().parameters.from_dt),activity('FETCH LAST LOAD').output.value[0].last_load_dt,pipeline().parameters.from_dt)}'\n\n\n",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -117,80 +117,6 @@
 				}
 			},
 			{
-				"name": "UPDATE LAST LOAD",
-				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "FETCH MAX DATA FETCH",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "JsonSource",
-						"additionalColumns": [
-							{
-								"name": "last_load_dt",
-								"value": {
-									"value": "@activity('FETCH MAX DATA FETCH').output.resultSets[0].rows[0].last_ld_dt",
-									"type": "Expression"
-								}
-							}
-						],
-						"storeSettings": {
-							"type": "AzureBlobFSReadSettings",
-							"recursive": true,
-							"enablePartitionDiscovery": false
-						},
-						"formatSettings": {
-							"type": "JsonReadSettings"
-						}
-					},
-					"sink": {
-						"type": "JsonSink",
-						"storeSettings": {
-							"type": "AzureBlobFSWriteSettings"
-						},
-						"formatSettings": {
-							"type": "JsonWriteSettings"
-						}
-					},
-					"enableStaging": false
-				},
-				"inputs": [
-					{
-						"referenceName": "json_dynamic",
-						"type": "DatasetReference",
-						"parameters": {
-							"container": "bronze",
-							"folder": "cdc",
-							"file": "empty.json"
-						}
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "json_dynamic",
-						"type": "DatasetReference",
-						"parameters": {
-							"container": "bronze",
-							"folder": "cdc",
-							"file": "last_load_details.json"
-						}
-					}
-				]
-			},
-			{
 				"name": "CURRENT LOAD",
 				"type": "SetVariable",
 				"dependsOn": [],
@@ -208,8 +134,8 @@
 				}
 			},
 			{
-				"name": "FETCH MAX DATA FETCH",
-				"type": "Script",
+				"name": "LAST LOAD AND PARQUET CONDITION",
+				"type": "IfCondition",
 				"dependsOn": [
 					{
 						"activity": "SQL-DB TO AZURE",
@@ -218,29 +144,155 @@
 						]
 					}
 				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
 				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase1",
-					"type": "LinkedServiceReference"
-				},
 				"typeProperties": {
-					"scripts": [
+					"expression": {
+						"value": "@greater(activity('SQL-DB TO AZURE').output.rowsRead, 0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
 						{
-							"type": "Query",
-							"text": {
-								"value": "select max(@{pipeline().parameters.last_load_col}) as last_ld_dt from @{pipeline().parameters.schema}.@{pipeline().parameters.table}",
-								"type": "Expression"
+							"name": "DELETE EMPTY PARQUET",
+							"type": "Delete",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "azure_adls_bronze_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"container": "bronze",
+										"folder": {
+											"value": "@pipeline().parameters.table",
+											"type": "Expression"
+										},
+										"file": {
+											"value": "@concat(pipeline().parameters.table,'_',variables('current_load'))",
+											"type": "Expression"
+										}
+									}
+								},
+								"enableLogging": false,
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
 							}
 						}
 					],
-					"scriptBlockExecutionTimeout": "02:00:00"
+					"ifTrueActivities": [
+						{
+							"name": "UPDATE LAST LOAD",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "FETCH MAX DATA FETCH",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "JsonSource",
+									"additionalColumns": [
+										{
+											"name": "last_load_dt",
+											"value": {
+												"value": "@activity('FETCH MAX DATA FETCH').output.resultSets[0].rows[0].last_ld_dt",
+												"type": "Expression"
+											}
+										}
+									],
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "JsonReadSettings"
+									}
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "json_dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"container": "bronze",
+										"folder": "cdc",
+										"file": "empty.json"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "json_dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"container": "bronze",
+										"folder": "cdc",
+										"file": "last_load_details.json"
+									}
+								}
+							]
+						},
+						{
+							"name": "FETCH MAX DATA FETCH",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "select max(@{pipeline().parameters.last_load_col}) as last_ld_dt from @{pipeline().parameters.schema}.@{pipeline().parameters.table}",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
 				}
 			}
 		],
@@ -252,6 +304,9 @@
 				"type": "string"
 			},
 			"last_load_col": {
+				"type": "string"
+			},
+			"from_dt": {
 				"type": "string"
 			}
 		},
