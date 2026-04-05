@@ -326,9 +326,7 @@
 					{
 						"activity": "RUN PIPELINE FOR ALL TABLE",
 						"dependencyConditions": [
-							"Failed",
-							"Skipped",
-							"Succeeded"
+							"Failed"
 						]
 					}
 				],
