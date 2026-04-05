@@ -9,7 +9,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@pipeline().parameters.AllTables",
+						"value": "@pipeline().parameters.AllTablesInput",
 						"type": "Expression"
 					},
 					"isSequential": true,
@@ -17,8 +17,6 @@
 						{
 							"name": "SQL-DB TO AZURE",
 							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "FETCH LAST LOAD",
@@ -45,7 +43,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "select * from @{pipeline().parameters.schema}.@{item().table} where @{item().last_load_col} >  '@{if(empty(pipeline().parameters.from_dt),activity('FETCH LAST LOAD').output.value[0].last_load_dt,pipeline().parameters.from_dt)}'\n\n\n",
+										"value": "select * from @{item().schema}.@{item().table} where @{item().last_load_col} >  '@{if(empty(pipeline().parameters.from_dt),activity('FETCH LAST LOAD').output.value[0].last_load_dt,pipeline().parameters.from_dt)}'\n\n\n",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -124,7 +122,7 @@
 									"parameters": {
 										"container": "bronze",
 										"folder": {
-											"value": "@concat(item(),'_cdc')",
+											"value": "@concat(item().table,'_cdc')",
 											"type": "Expression"
 										},
 										"file": "last_load_details.json"
@@ -153,8 +151,6 @@
 						{
 							"name": "LAST LOAD AND PARQUET CONDITION",
 							"type": "IfCondition",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "SQL-DB TO AZURE",
@@ -193,7 +189,7 @@
 														"type": "Expression"
 													},
 													"file": {
-														"value": "@concat(item().table,variables('current_load'))",
+														"value": "@concat(item().table,'_',variables('current_load'))",
 														"type": "Expression"
 													}
 												}
@@ -309,7 +305,7 @@
 												{
 													"type": "Query",
 													"text": {
-														"value": "select max(@{item().last_load_col}) as last_ld_dt from @{pipeline().parameters.schema}.@{item().table}",
+														"value": "select max(@{item().last_load_col}) as last_ld_dt from @{item().schema}.@{item().table}",
 														"type": "Expression"
 													}
 												}
@@ -333,7 +329,7 @@
 				"type": "string"
 			},
 			"AllTablesInput": {
-				"type": "object",
+				"type": "array",
 				"defaultValue": [
 					{
 						"schema": "dbo",
