@@ -45,7 +45,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "select * from @{pipeline().parameters.schema}.@{item()} where @{pipeline().parameters.last_load_col} >  '@{if(empty(pipeline().parameters.from_dt),activity('FETCH LAST LOAD').output.value[0].last_load_dt,pipeline().parameters.from_dt)}'\n\n\n",
+										"value": "select * from @{pipeline().parameters.schema}.@{item().table} where @{item().last_load_col} >  '@{if(empty(pipeline().parameters.from_dt),activity('FETCH LAST LOAD').output.value[0].last_load_dt,pipeline().parameters.from_dt)}'\n\n\n",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -83,11 +83,11 @@
 									"parameters": {
 										"container": "bronze",
 										"folder": {
-											"value": "@concat(item(),'_cdc')",
+											"value": "@concat(item().table,'_cdc')",
 											"type": "Expression"
 										},
 										"file": {
-											"value": "@concat(item(),'_',variables('current_load'))",
+											"value": "@concat(item().table,'_',variables('current_load'))",
 											"type": "Expression"
 										}
 									}
@@ -97,8 +97,6 @@
 						{
 							"name": "FETCH LAST LOAD",
 							"type": "Lookup",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -138,8 +136,6 @@
 						{
 							"name": "CURRENT LOAD",
 							"type": "SetVariable",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"secureOutput": false,
@@ -193,11 +189,11 @@
 												"parameters": {
 													"container": "bronze",
 													"folder": {
-														"value": "@concat(item(),'_cdc')",
+														"value": "@concat(item().table,'_cdc')",
 														"type": "Expression"
 													},
 													"file": {
-														"value": "@concat(item(),variables('current_load'))",
+														"value": "@concat(item().table,variables('current_load'))",
 														"type": "Expression"
 													}
 												}
@@ -270,7 +266,7 @@
 												"parameters": {
 													"container": "bronze",
 													"folder": {
-														"value": "@concat(item(),'_cdc')",
+														"value": "@concat(item().table,'_cdc')",
 														"type": "Expression"
 													},
 													"file": "empty.json"
@@ -284,7 +280,7 @@
 												"parameters": {
 													"container": "bronze",
 													"folder": {
-														"value": "@concat(item(),'_cdc')",
+														"value": "@concat(item().table,'_cdc')",
 														"type": "Expression"
 													},
 													"file": "last_load_details.json"
@@ -313,7 +309,7 @@
 												{
 													"type": "Query",
 													"text": {
-														"value": "select max(@{pipeline().parameters.last_load_col}) as last_ld_dt from @{pipeline().parameters.schema}.@{item()}",
+														"value": "select max(@{item().last_load_col}) as last_ld_dt from @{pipeline().parameters.schema}.@{item().table}",
 														"type": "Expression"
 													}
 												}
@@ -333,22 +329,37 @@
 				"type": "string",
 				"defaultValue": "dbo"
 			},
-			"table": {
-				"type": "string"
-			},
-			"last_load_col": {
-				"type": "string",
-				"defaultValue": "updated_at"
-			},
 			"from_dt": {
 				"type": "string"
 			},
-			"AllTables": {
-				"type": "array",
+			"AllTablesInput": {
+				"type": "object",
 				"defaultValue": [
-					"DimUser",
-					"DimArtist",
-					"DimTrack"
+					{
+						"schema": "dbo",
+						"table": "DimUser",
+						"last_load_col": "updated_at"
+					},
+					{
+						"schema": "dbo",
+						"table": "DimTrack",
+						"last_load_col": "updated_at"
+					},
+					{
+						"schema": "dbo",
+						"table": "DimDate",
+						"last_load_col": "date"
+					},
+					{
+						"schema": "dbo",
+						"table": "DimArtist",
+						"last_load_col": "updated_at"
+					},
+					{
+						"schema": "dbo",
+						"table": "FactStream",
+						"last_load_col": "stream_timestamp"
+					}
 				]
 			}
 		},
