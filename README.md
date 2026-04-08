@@ -1,8 +1,8 @@
 # Azure-DE-Project
 
 
-## HLD
+## Flow1.1
 ![](ADF_Flow_HLD.png)
 
-## LLD
+## Flow 1.2
 ![](ADF_Flow_LLD.png)
